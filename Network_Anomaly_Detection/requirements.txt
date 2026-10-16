@@ -1,0 +1,16 @@
+# Core Data & ML
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.4
+
+# Flagship Web Application (FastAPI + Modern SPA)
+fastapi>=0.110.0
+uvicorn>=0.28.0
+jinja2>=3.1.0
+pydantic>=2.6.0
+
+# Analytics & Alternative Streamlit Dashboard
+streamlit>=1.36
+matplotlib>=3.8
+plotly>=5.20
+seaborn>=0.13

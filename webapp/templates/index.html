@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SENTINEL AI // Defensive Network Anomaly Detection</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🛡️</text></svg>">
+  
+  <!-- Modern Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            space: '#070a12',
+            surface: '#0e1424',
+            elevated: '#151d33',
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="bg-[#070a12] text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-cyan-500 selection:text-black">
+
+  <!-- ============================================================== -->
+  <!-- TOP APP HEADER & STATUS BAR                                    -->
+  <!-- ============================================================== -->
+  <header class="border-b border-slate-800/80 bg-[#0a0f1d]/90 backdrop-blur-md sticky top-0 z-40 px-6 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-4">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 text-xl font-bold">
+        🛡️
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-lg tracking-tight text-white">SENTINEL<span class="text-cyan-400">.AI</span></span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-mono font-semibold bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">SOC v3.0</span>
+        </div>
+        <div class="text-[11px] text-slate-400">Autonomous Flow Telemetry Defense & Explainable Threat Attribution</div>
+      </div>
+    </div>
+
+    <!-- Live Telemetry Status Center -->
+    <div class="flex items-center gap-5">
+      <div class="hidden md:flex items-center gap-2.5 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs">
+        <span class="pulse-beacon"></span>
+        <span class="text-slate-300 font-medium">SHIELD ACTIVE</span>
+        <span class="text-slate-600">|</span>
+        <span id="live-throughput" class="font-mono text-cyan-400 font-semibold">1,480 flows/s</span>
+      </div>
+
+      <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-xs font-mono">
+        <span class="text-slate-400">ENGINE:</span>
+        <span id="header-model-name" class="text-indigo-300 font-bold">Random Forest</span>
+      </div>
+
+      <button id="btn-inject-threat" class="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-rose-600/20 text-rose-300 hover:bg-rose-600/30 border border-rose-500/40 text-xs font-medium transition shadow-sm hover:shadow-rose-500/20">
+        <span>⚡</span> Inject Test Threat
+      </button>
+
+      <a href="/docs" target="_blank" class="text-slate-400 hover:text-slate-200 text-xs font-mono border-b border-dashed border-slate-600 pb-0.5">REST API</a>
+    </div>
+  </header>
+
+  <!-- ============================================================== -->
+  <!-- MAIN LAYOUT (SIDEBAR + CONTENT CANVAS)                         -->
+  <!-- ============================================================== -->
+  <div class="flex-1 flex overflow-hidden">
+
+    <!-- Left App Navigation Bar -->
+    <aside class="w-64 border-r border-slate-800/80 bg-[#090d18] flex flex-col shrink-0 p-4">
+      <div class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2 font-mono">Operations</div>
+      <nav class="space-y-1">
+        <button data-target="overview" class="nav-btn active w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition border text-left">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Command Center
+        </button>
+        <button data-target="threats" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition border border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 text-left">
+          <i data-lucide="shield-alert" class="w-4 h-4"></i> Threat Forensic Queue
+        </button>
+        <button data-target="sandbox" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition border border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 text-left">
+          <i data-lucide="terminal" class="w-4 h-4"></i> Attack Simulator
+        </button>
+        <button data-target="models" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition border border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 text-left">
+          <i data-lucide="cpu" class="w-4 h-4"></i> AI Model Studio
+        </button>
+        <button data-target="data" class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition border border-transparent text-slate-400 hover:bg-slate-800/40 hover:text-slate-200 text-left">
+          <i data-lucide="database" class="w-4 h-4"></i> Data Studio & Lab
+        </button>
+      </nav>
+
+      <div class="mt-8 text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2 font-mono">Security Context</div>
+      <div class="p-3.5 rounded-xl bg-slate-900/50 border border-slate-800/80 text-xs text-slate-400 space-y-2">
+        <div class="flex justify-between">
+          <span>Mode:</span>
+          <span class="text-emerald-400 font-mono font-bold">Passive Defensive</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Interception:</span>
+          <span class="text-cyan-400 font-mono font-bold">Stateful Core</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Interception Score:</span>
+          <span id="canvas-blocked-counter" class="text-rose-400 font-mono font-bold">0</span>
+        </div>
+      </div>
+
+      <div class="mt-auto pt-4 border-t border-slate-800/60 text-[11px] text-slate-500 flex items-center justify-between">
+        <span>Sentinel AI Platform</span>
+        <span class="font-mono">v3.0.0</span>
+      </div>
+    </aside>
+
+    <!-- Main Content Stage -->
+    <main class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-8">
+
+      <!-- ============================================================ -->
+      <!-- VIEW 1: COMMAND CENTER (OVERVIEW + CANVAS)                   -->
+      <!-- ============================================================ -->
+      <section id="view-overview" class="tab-view space-y-6">
+
+        <!-- Top KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="glass-panel kpi-accent accent-cyan p-5">
+            <div class="text-xs uppercase font-medium text-slate-400 tracking-wider">Monitored Flow Volume</div>
+            <div id="kpi-total-flows" class="text-3xl font-bold font-mono text-white mt-1.5">2,000</div>
+            <div class="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
+              <span class="text-cyan-400">●</span> 500 flows in held-out validation
+            </div>
+          </div>
+
+          <div class="glass-panel kpi-accent accent-rose p-5">
+            <div class="text-xs uppercase font-medium text-slate-400 tracking-wider">Flagged Suspicious Anomalies</div>
+            <div id="kpi-flagged-threats" class="text-3xl font-bold font-mono text-rose-400 mt-1.5">250</div>
+            <div id="kpi-flag-rate" class="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
+              <span class="text-rose-400">●</span> 50.0% flag rate @ cutoff
+            </div>
+          </div>
+
+          <div class="glass-panel kpi-accent accent-emerald p-5">
+            <div class="text-xs uppercase font-medium text-slate-400 tracking-wider">F1-Score (Balanced Detection)</div>
+            <div id="kpi-f1-score" class="text-3xl font-bold font-mono text-emerald-400 mt-1.5">100.0%</div>
+            <div class="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
+              <span class="text-emerald-400">●</span> High precision & high recall
+            </div>
+          </div>
+
+          <div class="glass-panel kpi-accent accent-amber p-5">
+            <div class="text-xs uppercase font-medium text-slate-400 tracking-wider">Classifier Accuracy</div>
+            <div id="kpi-accuracy" class="text-3xl font-bold font-mono text-amber-400 mt-1.5">100.0%</div>
+            <div class="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
+              <span class="text-amber-400">●</span> Calibrated statistical boundary
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Animated Network Topology Canvas -->
+        <div class="glass-panel p-6 space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+              <h2 class="text-base font-bold text-white flex items-center gap-2">
+                <span>🌐</span> Live Network Topology & Telemetry Inspection Stream
+              </h2>
+              <p class="text-xs text-slate-400">Real-time packet visualization. Benign flows (emerald) pass through; anomalous payloads (pulsing red) are intercepted at the Sentinel Core.</p>
+            </div>
+            <div class="flex items-center gap-3">
+              <button id="btn-canvas-speed" class="px-3 py-1 text-xs rounded-lg bg-slate-800 text-slate-300 border border-slate-700 font-mono hover:bg-slate-700">
+                Speed: 1x
+              </button>
+              <button onclick="networkCanvasInstance.injectThreat()" class="px-3 py-1 text-xs rounded-lg bg-rose-600/20 text-rose-300 border border-rose-500/40 hover:bg-rose-600/30 font-medium">
+                ⚡ Inject Threat
+              </button>
+            </div>
+          </div>
+
+          <!-- HTML5 Canvas Container -->
+          <div class="w-full h-[280px] bg-[#090e1a] rounded-xl border border-slate-800/80 relative overflow-hidden flex items-center justify-center">
+            <canvas id="network-canvas" class="w-full h-full block"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Incident Triage Ticker -->
+        <div class="glass-panel p-6 space-y-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>🚨</span> High-Priority Threat Feeds
+              </h3>
+              <p class="text-xs text-slate-400">Click any incident to open the forensic breakdown drawer.</p>
+            </div>
+            <button onclick="switchTab('threats')" class="text-xs text-cyan-400 hover:text-cyan-300 font-medium">
+              View All Incidents ➔
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-slate-800 text-[11px] font-mono uppercase tracking-wider text-slate-400">
+                  <th class="py-2.5 px-4">Flow ID</th>
+                  <th class="py-2.5 px-4">Severity</th>
+                  <th class="py-2.5 px-4">Risk Index</th>
+                  <th class="py-2.5 px-4">Attribution Reason</th>
+                  <th class="py-2.5 px-4">Volume</th>
+                  <th class="py-2.5 px-4 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="overview-incident-feed" class="text-sm divide-y divide-slate-800/40">
+                <!-- Injected via JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- VIEW 2: THREAT QUEUE & FORENSICS                             -->
+      <!-- ============================================================ -->
+      <section id="view-threats" class="tab-view hidden space-y-6">
+        <div class="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🚨</span> Threat Forensic Queue & Incident Desk
+            </h2>
+            <p class="text-xs text-slate-400">Search, triage, and inspect anomalous network sessions with explainable AI heuristic attribution.</p>
+          </div>
+          <span id="threats-count-badge" class="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-rose-950/60 text-rose-300 border border-rose-800/60">
+            0 Incidents
+          </span>
+        </div>
+
+        <!-- Filter Toolbar -->
+        <div class="glass-panel p-4 flex flex-wrap items-center gap-4">
+          <div class="flex-1 min-w-[240px]">
+            <input id="threat-search-input" type="text" placeholder="🔍 Search Flow ID (e.g. FLW-00594) or keyword..." oninput="loadAlertsTable()"
+              class="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-slate-700/80 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+          </div>
+          <div class="flex items-center gap-3">
+            <span class="text-xs text-slate-400">Min Risk:</span>
+            <input id="threat-min-risk" type="range" min="0" max="95" value="0" oninput="loadAlertsTable()" class="w-28">
+          </div>
+        </div>
+
+        <!-- Alerts Table -->
+        <div class="glass-panel overflow-hidden">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead class="bg-slate-900/60 border-b border-slate-800 text-[11px] font-mono uppercase tracking-wider text-slate-400">
+                <tr>
+                  <th class="py-3 px-4">Flow UID</th>
+                  <th class="py-3 px-4">Severity Tier</th>
+                  <th class="py-3 px-4">Composite Risk</th>
+                  <th class="py-3 px-4">Forensic Attribution</th>
+                  <th class="py-3 px-4">Duration</th>
+                  <th class="py-3 px-4">Failed / Ports</th>
+                  <th class="py-3 px-4 text-right">Deep Triage</th>
+                </tr>
+              </thead>
+              <tbody id="threats-table-body" class="text-sm divide-y divide-slate-800/40">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- VIEW 3: LIVE THREAT SANDBOX & ATTACK COCKPIT                 -->
+      <!-- ============================================================ -->
+      <section id="view-sandbox" class="tab-view hidden space-y-6">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>🔬</span> Adversary Threat Simulator & Flow Sandbox
+          </h2>
+          <p class="text-xs text-slate-400">Interact with custom telemetry dials or trigger attack presets to observe instantaneous AI detection and forensic explanations.</p>
+        </div>
+
+        <!-- Preset Buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <button data-preset="normal" class="preset-btn p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/20 hover:bg-emerald-950/40 text-left transition">
+            <div class="text-xs font-bold text-emerald-400">🟢 Normal Web Flow</div>
+            <div class="text-[11px] text-slate-400 mt-1">Standard HTTPS Browsing</div>
+          </button>
+          <button data-preset="portscan" class="preset-btn p-3 rounded-xl border border-rose-500/30 bg-rose-950/20 hover:bg-rose-950/40 text-left transition">
+            <div class="text-xs font-bold text-rose-400">🔴 Port Scanning</div>
+            <div class="text-[11px] text-slate-400 mt-1">Rapid Nmap Reconnaissance</div>
+          </button>
+          <button data-preset="exfil" class="preset-btn p-3 rounded-xl border border-indigo-500/30 bg-indigo-950/20 hover:bg-indigo-950/40 text-left transition">
+            <div class="text-xs font-bold text-indigo-400">🟣 Data Exfiltration</div>
+            <div class="text-[11px] text-slate-400 mt-1">Large Data Payload Burst</div>
+          </button>
+          <button data-preset="bruteforce" class="preset-btn p-3 rounded-xl border border-amber-500/30 bg-amber-950/20 hover:bg-amber-950/40 text-left transition">
+            <div class="text-xs font-bold text-amber-400">🟠 Brute-Force Auth</div>
+            <div class="text-[11px] text-slate-400 mt-1">High Failed Handshakes</div>
+          </button>
+          <button data-preset="ddos" class="preset-btn p-3 rounded-xl border border-cyan-500/30 bg-cyan-950/20 hover:bg-cyan-950/40 text-left transition">
+            <div class="text-xs font-bold text-cyan-400">🔵 Volumetric Flood</div>
+            <div class="text-[11px] text-slate-400 mt-1">Packet Flood / Buffer Exhaust</div>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Left Controls Column (Sliders) -->
+          <div class="lg:col-span-6 glass-panel p-6 space-y-5">
+            <h3 class="text-sm font-bold text-white uppercase font-mono tracking-wider">Flow Telemetry Parameters</h3>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-300">Flow Duration (seconds)</span>
+                <span id="val-duration" class="font-mono text-cyan-400 font-bold">12.0</span>
+              </div>
+              <input id="sim-duration" type="range" min="0.5" max="100.0" step="0.5" value="12.0" class="w-full">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-300">Packet Count</span>
+                <span id="val-packets" class="font-mono text-cyan-400 font-bold">35</span>
+              </div>
+              <input id="sim-packets" type="range" min="1" max="180" step="1" value="35" class="w-full">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-300">Byte Payload Volume</span>
+                <span id="val-bytes" class="font-mono text-cyan-400 font-bold">3200</span>
+              </div>
+              <input id="sim-bytes" type="range" min="200" max="80000" step="500" value="3200" class="w-full">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-300">Failed Connection Handshakes</span>
+                <span id="val-failed_connections" class="font-mono text-cyan-400 font-bold">0</span>
+              </div>
+              <input id="sim-failed_connections" type="range" min="0" max="15" step="1" value="0" class="w-full">
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-300">Unique Destination Ports Contacted</span>
+                <span id="val-unique_ports" class="font-mono text-cyan-400 font-bold">2</span>
+              </div>
+              <input id="sim-unique_ports" type="range" min="1" max="25" step="1" value="2" class="w-full">
+            </div>
+          </div>
+
+          <!-- Right Inference Results Column -->
+          <div class="lg:col-span-6 space-y-4">
+            
+            <!-- Verdict Banner -->
+            <div id="sim-verdict-banner" class="p-5 rounded-xl border border-emerald-500/40 bg-emerald-950/20 text-emerald-300 space-y-1">
+              <div id="sim-verdict-text" class="font-bold text-base tracking-tight">✅ BENIGN / NORMAL NETWORK PATTERN</div>
+              <div id="sim-verdict-desc" class="text-xs text-slate-300">Parameters align comfortably with normal operational flow baselines.</div>
+            </div>
+
+            <!-- Threat Gauge & Likelihood -->
+            <div class="glass-panel p-5 space-y-3">
+              <div class="flex items-center justify-between">
+                <span class="text-xs uppercase font-mono tracking-wider text-slate-400">Calculated Threat Likelihood</span>
+                <span id="sim-gauge-percent" class="text-2xl font-bold font-mono text-white">0%</span>
+              </div>
+
+              <!-- Heuristic Attribution Box -->
+              <div class="pt-2">
+                <div class="text-xs font-mono uppercase text-slate-400 mb-2">Identified Cyber Signatures:</div>
+                <div id="sim-flags-container" class="space-y-2">
+                  <!-- Dynamic heuristic flag cards -->
+                </div>
+              </div>
+
+              <div class="pt-3 border-t border-slate-800 text-xs text-slate-300">
+                <strong class="text-slate-400">SOC Remediation:</strong> <span id="sim-action-text">Standard passive monitoring.</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- VIEW 4: AI MODEL STUDIO                                      -->
+      <!-- ============================================================ -->
+      <section id="view-models" class="tab-view hidden space-y-6">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>🧠</span> Machine Learning Model Diagnostics Studio
+          </h2>
+          <p class="text-xs text-slate-400">Inspect ROC curves, Confusion Matrix, and feature importances. Experiment with different tree ensemble architectures.</p>
+        </div>
+
+        <!-- Controls Toolbar -->
+        <div class="glass-panel p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+          <div>
+            <label class="block text-xs font-mono text-slate-400 mb-1.5 uppercase">Algorithm</label>
+            <select id="model-select-algo" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200 focus:outline-none">
+              <option value="Random Forest">Random Forest (Balanced)</option>
+              <option value="Gradient Boosting">Gradient Boosting</option>
+              <option value="Extra Trees">Extra Trees (Fast)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-mono text-slate-400 mb-1.5 uppercase">Estimators (Trees)</label>
+            <input id="model-n-estimators" type="number" min="50" max="300" step="25" value="150"
+              class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs font-mono text-slate-400 mb-1.5 uppercase">
+              <span>Threshold</span>
+              <span id="model-threshold-val" class="text-cyan-400 font-bold">0.50</span>
+            </div>
+            <input id="model-threshold-slider" type="range" min="0.10" max="0.90" step="0.05" value="0.50" class="w-full">
+          </div>
+
+          <div class="flex items-end">
+            <button id="btn-retrain-model" class="w-full py-2.5 px-4 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-medium text-xs transition shadow-lg shadow-cyan-600/20">
+              Retrain Ensemble
+            </button>
+          </div>
+        </div>
+
+        <!-- Evaluation Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+          <!-- Confusion Matrix -->
+          <div class="lg:col-span-5 glass-panel p-5 space-y-4">
+            <h3 class="text-sm font-bold text-white font-mono uppercase">Confusion Matrix (Held-out Test)</h3>
+            <div class="grid grid-cols-2 gap-3 text-center">
+              <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="text-[11px] text-slate-400 uppercase">True Negative (TN)</div>
+                <div id="cm-tn" class="text-2xl font-bold font-mono text-cyan-400 mt-1">250</div>
+                <div class="text-[10px] text-slate-500 mt-1">Correct Benign</div>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="text-[11px] text-slate-400 uppercase">False Positive (FP)</div>
+                <div id="cm-fp" class="text-2xl font-bold font-mono text-amber-400 mt-1">0</div>
+                <div class="text-[10px] text-slate-500 mt-1">False Alarms</div>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="text-[11px] text-slate-400 uppercase">False Negative (FN)</div>
+                <div id="cm-fn" class="text-2xl font-bold font-mono text-rose-400 mt-1">0</div>
+                <div class="text-[10px] text-slate-500 mt-1">Missed Threats</div>
+              </div>
+              <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+                <div class="text-[11px] text-slate-400 uppercase">True Positive (TP)</div>
+                <div id="cm-tp" class="text-2xl font-bold font-mono text-emerald-400 mt-1">250</div>
+                <div class="text-[10px] text-slate-500 mt-1">Threats Caught</div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-800 grid grid-cols-4 gap-2 text-center text-xs">
+              <div>
+                <div class="text-slate-400 text-[10px]">AUC-ROC</div>
+                <div id="diag-auc-roc" class="font-bold font-mono text-cyan-400 mt-0.5">1.000</div>
+              </div>
+              <div>
+                <div class="text-slate-400 text-[10px]">AUC-PR</div>
+                <div id="diag-auc-pr" class="font-bold font-mono text-cyan-400 mt-0.5">1.000</div>
+              </div>
+              <div>
+                <div class="text-slate-400 text-[10px]">F1-Score</div>
+                <div id="diag-f1" class="font-bold font-mono text-emerald-400 mt-0.5">100%</div>
+              </div>
+              <div>
+                <div class="text-slate-400 text-[10px]">Precision</div>
+                <div id="diag-precision" class="font-bold font-mono text-emerald-400 mt-0.5">100%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ROC Curve Canvas -->
+          <div class="lg:col-span-7 glass-panel p-5 space-y-2">
+            <h3 class="text-sm font-bold text-white font-mono uppercase">ROC Curve (Receiver Operating Characteristic)</h3>
+            <div class="w-full h-[250px] relative">
+              <canvas id="chart-roc-curve"></canvas>
+            </div>
+          </div>
+
+          <!-- Feature Importance Chart -->
+          <div class="lg:col-span-12 glass-panel p-5 space-y-2">
+            <h3 class="text-sm font-bold text-white font-mono uppercase">Relative Feature Importance (Gini Metric Contribution)</h3>
+            <div class="w-full h-[200px] relative">
+              <canvas id="chart-feature-importance"></canvas>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ============================================================ -->
+      <!-- VIEW 5: DATA STUDIO & GENERATOR                              -->
+      <!-- ============================================================ -->
+      <section id="view-data" class="tab-view hidden space-y-6">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>📁</span> Data Studio & Synthetic Generator
+          </h2>
+          <p class="text-xs text-slate-400">Generate fresh synthetic flows or examine dataset telemetry distributions.</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div class="lg:col-span-6 glass-panel p-6 space-y-4">
+            <h3 class="text-sm font-bold text-white uppercase font-mono">Synthesize New Traffic Dataset</h3>
+            <p class="text-xs text-slate-400">Create balanced or skewed network flow distributions to simulate adversary surges.</p>
+
+            <div class="space-y-4 pt-2">
+              <div>
+                <label class="block text-xs font-mono text-slate-400 mb-1">Record Count</label>
+                <input id="gen-count" type="number" value="2000" min="500" max="10000" step="500" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-xs text-slate-200">
+              </div>
+
+              <div>
+                <label class="block text-xs font-mono text-slate-400 mb-1">Anomaly Contamination Ratio</label>
+                <input id="gen-ratio" type="range" min="0.10" max="0.70" step="0.05" value="0.50" class="w-full">
+                <div class="text-right text-xs font-mono text-cyan-400" id="gen-ratio-val">50% Suspicious</div>
+              </div>
+
+              <button id="btn-generate-data" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs transition">
+                ⚡ Synthesize & Overwrite Telemetry
+              </button>
+            </div>
+          </div>
+
+          <div class="lg:col-span-6 glass-panel p-6 space-y-3">
+            <h3 class="text-sm font-bold text-white uppercase font-mono">Telemetry Schema Standards</h3>
+            <ul class="text-xs text-slate-300 space-y-2 font-mono">
+              <li><strong class="text-cyan-400">duration</strong>: Numeric connection lifespan in seconds</li>
+              <li><strong class="text-cyan-400">packets</strong>: Total ingress and egress packet count</li>
+              <li><strong class="text-cyan-400">bytes</strong>: Total transfer payload in bytes</li>
+              <li><strong class="text-cyan-400">failed_connections</strong>: TCP SYN/RST handshakes or auth drops</li>
+              <li><strong class="text-cyan-400">unique_ports</strong>: Number of unique destination service ports</li>
+              <li><strong class="text-cyan-400">label</strong>: Binary truth (0 = Benign, 1 = Suspicious)</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- FORENSIC SLIDE-OVER INSPECTION DRAWER                          -->
+  <!-- ============================================================== -->
+  <div id="drawer-backdrop" onclick="closeDrawer()" class="hidden fixed inset-0 z-50 drawer-backdrop"></div>
+  <aside id="forensic-drawer" class="fixed top-0 right-0 bottom-0 w-full max-w-lg z-50 drawer-content shadow-2xl p-6 overflow-y-auto transform translate-x-full space-y-6">
+    <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+      <div>
+        <div class="text-[11px] font-mono uppercase text-slate-400">Forensic Investigation</div>
+        <h3 id="drawer-flow-id" class="text-xl font-bold font-mono text-cyan-400">FLW-00000</h3>
+      </div>
+      <button onclick="closeDrawer()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+
+    <div id="drawer-loading" class="py-12 text-center text-slate-400 text-xs">
+      Loading forensic telemetry...
+    </div>
+
+    <div id="drawer-body" class="hidden space-y-5">
+      <!-- Risk Score Card -->
+      <div class="p-4 rounded-xl bg-slate-900 border border-slate-800 space-y-2">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-mono text-slate-400 uppercase">Composite Threat Score</span>
+          <span id="drawer-sev-badge"></span>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="drawer-risk-score" class="text-3xl font-bold font-mono text-white">0/100</span>
+          <span id="drawer-prob-score" class="text-xs text-slate-400">0% probability</span>
+        </div>
+        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mt-1">
+          <div id="drawer-risk-bar" class="bg-gradient-to-r from-amber-500 to-rose-500 h-full w-0 transition-all duration-500"></div>
+        </div>
+      </div>
+
+      <!-- Heuristic Attribution -->
+      <div class="space-y-2">
+        <div class="text-xs font-mono uppercase text-slate-400">Identified Cyber Signatures</div>
+        <div id="drawer-flags-list" class="space-y-2"></div>
+      </div>
+
+      <!-- Deviations vs Baseline -->
+      <div class="space-y-2">
+        <div class="text-xs font-mono uppercase text-slate-400">Deviation from Benign Baseline</div>
+        <div id="drawer-deviations-list" class="p-3 rounded-xl bg-slate-900 border border-slate-800 space-y-1"></div>
+      </div>
+
+      <!-- Recommended Action -->
+      <div class="p-4 rounded-xl border border-cyan-800/60 bg-cyan-950/20 text-xs text-slate-300 space-y-1">
+        <div class="font-bold text-cyan-400 font-mono uppercase">Recommended SOC Action:</div>
+        <div id="drawer-action-text" class="text-slate-300"></div>
+      </div>
+
+      <!-- Drawer Action Buttons -->
+      <div class="pt-4 border-t border-slate-800 flex gap-3">
+        <button onclick="handleQuarantineCurrent()" class="flex-1 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-medium text-xs transition">
+          Quarantine Host
+        </button>
+        <button onclick="handleExportCurrent()" class="flex-1 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs transition">
+          Export PCAP Rule
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Toast Notification Stack -->
+  <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 max-w-sm pointer-events-none"></div>
+
+  <!-- Scripts -->
+  <script src="/static/js/network_canvas.js"></script>
+  <script src="/static/js/app.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Wire generator button
+    document.getElementById('btn-generate-data').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-generate-data');
+      btn.disabled = true;
+      btn.innerText = 'Synthesizing...';
+      const count = parseInt(document.getElementById('gen-count').value);
+      const ratio = parseFloat(document.getElementById('gen-ratio').value);
+
+      try {
+        const res = await fetch('/api/generate-data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ n_samples: count, anomaly_ratio: ratio })
+        });
+        const data = await res.json();
+        showToast(data.message, 'success');
+        fetchOverviewData();
+        fetchDiagnosticsData();
+      } catch (err) {
+        showToast('Generation failed', 'danger');
+      } finally {
+        btn.disabled = false;
+        btn.innerText = '⚡ Synthesize & Overwrite Telemetry';
+      }
+    });
+
+    document.getElementById('gen-ratio').addEventListener('input', (e) => {
+      document.getElementById('gen-ratio-val').innerText = `${Math.round(e.target.value * 100)}% Suspicious`;
+    });
+  </script>
+</body>
+</html>

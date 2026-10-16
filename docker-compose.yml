@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  sentinel-ai-webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sentinel-ai-platform
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./Network_Anomaly_Detection/data:/app/Network_Anomaly_Detection/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

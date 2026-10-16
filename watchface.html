@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sentinel AI — Tactical SOC Mission Watch Face (Standalone)</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;600;700&display=swap');
+
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+    }
+
+    body {
+        background: #05070b;
+        color: #e2e8f0;
+        font-family: 'Inter', -apple-system, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 30px 15px;
+        overflow-x: hidden;
+    }
+
+    .header-banner {
+        text-align: center;
+        margin-bottom: 20px;
+    }
+
+    .header-title {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 22px;
+        font-weight: 800;
+        letter-spacing: 1.5px;
+        color: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .header-subtitle {
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 4px;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: 0.5px;
+    }
+
+    .watch-wrapper {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        width: 100%;
+        max-width: 850px;
+    }
+
+    /* Control Toolbar */
+    .controls-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        background: rgba(17, 24, 39, 0.85);
+        border: 1px solid rgba(56, 189, 248, 0.2);
+        padding: 10px 18px;
+        border-radius: 9999px;
+        backdrop-filter: blur(12px);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+    }
+
+    .ctrl-btn {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #cbd5e1;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .ctrl-btn:hover {
+        background: rgba(56, 189, 248, 0.2);
+        border-color: #38bdf8;
+        color: #38bdf8;
+        transform: translateY(-1px);
+    }
+
+    .ctrl-btn.active {
+        background: linear-gradient(135deg, #0ea5e9, #3b82f6);
+        border-color: #38bdf8;
+        color: #ffffff;
+        box-shadow: 0 0 12px rgba(14, 165, 233, 0.5);
+    }
+
+    /* Watch Container & Straps */
+    .watch-stage {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 30px 20px;
+    }
+
+    /* Realistic Rubber / Titanium Watch Straps */
+    .strap-top, .strap-bottom {
+        width: 140px;
+        height: 52px;
+        background: linear-gradient(90deg, #18202f 0%, #2a374d 30%, #151d2c 70%, #0d131f 100%);
+        border: 1px solid #334155;
+        position: relative;
+        box-shadow: inset 0 2px 4px rgba(255,255,255,0.08), 0 10px 20px rgba(0,0,0,0.5);
+    }
+
+    .strap-top {
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
+        margin-bottom: -12px;
+        z-index: 1;
+        border-bottom: none;
+    }
+
+    .strap-top::before, .strap-bottom::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: repeating-linear-gradient(0deg, transparent, transparent 6px, rgba(0,0,0,0.3) 6px, rgba(0,0,0,0.3) 8px);
+    }
+
+    .strap-bottom {
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+        margin-top: -12px;
+        z-index: 1;
+        border-top: none;
+    }
+
+    /* Watch Case Shadow & Glass Frame */
+    .watch-frame {
+        position: relative;
+        z-index: 2;
+        border-radius: 50%;
+        padding: 12px;
+        background: radial-gradient(circle at 35% 30%, #334155 0%, #1e293b 50%, #0f172a 100%);
+        box-shadow: 
+            0 25px 60px -15px rgba(0, 0, 0, 0.8),
+            0 0 0 2px #475569,
+            0 0 25px rgba(6, 182, 212, 0.15);
+        transition: all 0.3s ease;
+    }
+
+    .watch-frame.squircle {
+        border-radius: 72px;
+    }
+
+    .watch-frame.hex {
+        border-radius: 36px;
+    }
+
+    /* Watch Crown Buttons */
+    .watch-crown {
+        position: absolute;
+        right: -10px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 14px;
+        height: 48px;
+        background: linear-gradient(180deg, #64748b 0%, #334155 50%, #1e293b 100%);
+        border: 1px solid #94a3b8;
+        border-radius: 4px;
+        box-shadow: 2px 0 6px rgba(0,0,0,0.6);
+        cursor: pointer;
+        z-index: 3;
+    }
+
+    .watch-crown:hover {
+        filter: brightness(1.2);
+    }
+
+    .watch-pusher-top {
+        position: absolute;
+        right: 4px;
+        top: 25%;
+        width: 10px;
+        height: 32px;
+        background: #f97316;
+        border: 1px solid #fdba74;
+        border-radius: 3px;
+        cursor: pointer;
+        z-index: 3;
+        box-shadow: 0 0 8px rgba(249, 115, 22, 0.4);
+    }
+
+    .watch-pusher-bottom {
+        position: absolute;
+        right: 4px;
+        bottom: 25%;
+        width: 10px;
+        height: 32px;
+        background: #0ea5e9;
+        border: 1px solid #7dd3fc;
+        border-radius: 3px;
+        cursor: pointer;
+        z-index: 3;
+        box-shadow: 0 0 8px rgba(14, 165, 233, 0.4);
+    }
+
+    /* Canvas Element */
+    #watchCanvas {
+        display: block;
+        border-radius: 50%;
+        cursor: crosshair;
+        background: #080c14;
+        transition: border-radius 0.3s ease;
+    }
+
+    .squircle #watchCanvas {
+        border-radius: 60px;
+    }
+
+    .hex #watchCanvas {
+        border-radius: 28px;
+    }
+
+    /* Telemetry Tele-HUD Cards below watch */
+    .telemetry-deck {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .telemetry-pill {
+        background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(15, 23, 42, 0.9));
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .tele-label {
+        font-size: 10px;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+    }
+
+    .tele-val {
+        font-size: 18px;
+        font-weight: 700;
+        color: #f8fafc;
+        margin-top: 2px;
+    }
+
+    .tele-desc {
+        font-size: 10px;
+        color: #64748b;
+        margin-top: 2px;
+    }
+
+    /* Legend / Hints */
+    .watch-hint {
+        font-size: 11px;
+        color: #64748b;
+        text-align: center;
+        letter-spacing: 0.2px;
+    }
+</style>
+</head>
+<body>
+
+<div class="watch-wrapper">
+    <div class="header-banner">
+        <h1 class="header-title">🛡️ SENTINEL AI // SOC MISSION WATCH FACE</h1>
+        <p class="header-subtitle">Tactical Wearable Telemetry • DEFCON Threat Gauge • Live 60FPS Mission Chrono</p>
+    </div>
+
+    <!-- Interactive Controls Bar -->
+    <div class="controls-toolbar">
+        <span style="font-size: 11px; font-weight: 700; color: #38bdf8; font-family: 'JetBrains Mono'; margin-right: 4px;">THEME:</span>
+        <button class="ctrl-btn active" onclick="setTheme('cyber', this)">🛡️ Stealth Cyber</button>
+        <button class="ctrl-btn" onclick="setTheme('redalert', this)">🚨 Red Alert</button>
+        <button class="ctrl-btn" onclick="setTheme('aviation', this)">✈️ Aviator</button>
+        <button class="ctrl-btn" onclick="setTheme('matrix', this)">💻 Matrix</button>
+
+        <span style="height: 18px; width: 1px; background: rgba(255,255,255,0.15); margin: 0 4px;"></span>
+
+        <span style="font-size: 11px; font-weight: 700; color: #38bdf8; font-family: 'JetBrains Mono'; margin-right: 4px;">CASE:</span>
+        <button class="ctrl-btn active" onclick="setCase('round', this)">Round 44mm</button>
+        <button class="ctrl-btn" onclick="setCase('squircle', this)">Squircle Ultra</button>
+        <button class="ctrl-btn" onclick="setCase('hex', this)">Hex Stealth</button>
+
+        <span style="height: 18px; width: 1px; background: rgba(255,255,255,0.15); margin: 0 4px;"></span>
+
+        <button class="ctrl-btn" id="btnRadar" onclick="toggleRadar()">📡 Radar: ON</button>
+        <button class="ctrl-btn" id="btnMovement" onclick="toggleMovement()">⚡ Sweep</button>
+        <button class="ctrl-btn" id="btnAudio" onclick="toggleAudio()">🔇 Mute</button>
+        <button class="ctrl-btn" id="btnAOD" onclick="toggleAOD()">🌙 AOD Glow</button>
+    </div>
+
+    <!-- Watch Stage with Straps & Crowns -->
+    <div class="watch-stage">
+        <div class="strap-top"></div>
+        <div class="watch-frame" id="watchFrame">
+            <div class="watch-pusher-top" title="Pusher A: Quick DEFCON Cycle" onclick="cycleDefcon()"></div>
+            <div class="watch-crown" title="Crown: Toggle AOD Ambient Mode" onclick="toggleAOD()"></div>
+            <div class="watch-pusher-bottom" title="Pusher B: Radar Beam Toggle" onclick="toggleRadar()"></div>
+            <canvas id="watchCanvas" width="460" height="460"></canvas>
+        </div>
+        <div class="strap-bottom"></div>
+    </div>
+
+    <!-- Live Telemetry Readout Cards -->
+    <div class="telemetry-deck">
+        <div class="telemetry-pill" style="border-left: 3px solid #38bdf8;">
+            <div class="tele-label">DEFCON Threat Tier</div>
+            <div class="tele-val" style="color: #38bdf8;" id="teleDefcon">DEFCON 4 // DOUBLE TAKE</div>
+            <div class="tele-desc" id="teleDefconDesc">GUARDED: Minor Deviations Above Baseline</div>
+        </div>
+        <div class="telemetry-pill" style="border-left: 3px solid #38bdf8;">
+            <div class="tele-label">Anomaly Ratio</div>
+            <div class="tele-val" style="color: #38bdf8;" id="teleRate">7.1%</div>
+            <div class="tele-desc">142 alerts / 2,000 flows</div>
+        </div>
+        <div class="telemetry-pill" style="border-left: 3px solid #10b981;">
+            <div class="tele-label">Model Precision & F1</div>
+            <div class="tele-val" style="color: #10b981;">98.5%</div>
+            <div class="tele-desc">Engine: Random Forest Classifier</div>
+        </div>
+        <div class="telemetry-pill" style="border-left: 3px solid #818cf8;">
+            <div class="tele-label">Mission Chrono</div>
+            <div class="tele-val" id="teleUtcClock" style="color: #818cf8;">00:00:00 UTC</div>
+            <div class="tele-desc" id="teleLocalClock">LOCAL: --:--:--</div>
+        </div>
+    </div>
+
+    <div class="watch-hint">
+        💡 <strong>Interactive Watch Face:</strong> Tap or click anywhere on the watch dial to cycle through telemetry sub-dials. Click Crown for AOD night mode. Click Pusher A to test DEFCON alert levels.
+    </div>
+</div>
+
+<script>
+// --- Telemetry Data Payload ---
+const TELEMETRY = {
+    totalFlows: 2000,
+    anomaliesFlagged: 142,
+    threatRate: 7.1,
+    f1Score: 98.5,
+    accuracy: 98.9,
+    modelName: "Random Forest",
+    threshold: 0.50,
+    defconLevel: 4,
+    defconTitle: "DEFCON 4 // DOUBLE TAKE",
+    defconDesc: "GUARDED: Minor Deviations Above Baseline",
+    defconColor: "#38bdf8"
+};
+
+// State Variables
+let currentTheme = 'cyber';
+let currentCase = 'round';
+let radarActive = true;
+let isSmoothSweep = true;
+let audioEnabled = false;
+let aodMode = false;
+let radarAngle = 0;
+let lastSecondPlayed = -1;
+let subdialMode = 0;
+
+// Audio Synthesizer (Zero-dependency Web Audio API)
+let audioCtx = null;
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playTickSound() {
+    if (!audioEnabled) return;
+    try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(1400, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(320, audioCtx.currentTime + 0.025);
+        gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.025);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.025);
+    } catch (e) {}
+}
+
+function playSonarPing() {
+    if (!audioEnabled) return;
+    try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+    } catch (e) {}
+}
+
+// Color Themes
+const THEMES = {
+    cyber: {
+        dialBg: '#080c14',
+        dialGradOuter: '#04070c',
+        accent: '#00f0ff',
+        accentGlow: 'rgba(0, 240, 255, 0.4)',
+        secondHand: '#00f0ff',
+        hourHand: '#ffffff',
+        minuteHand: '#e2e8f0',
+        subdialBg: 'rgba(15, 23, 42, 0.7)',
+        subdialBorder: 'rgba(56, 189, 248, 0.3)',
+        indices: '#cbd5e1',
+        bezelText: '#38bdf8',
+        defconColor: '#38bdf8',
+        radarColor: 'rgba(6, 182, 212, 0.2)'
+    },
+    redalert: {
+        dialBg: '#120709',
+        dialGradOuter: '#0a0304',
+        accent: '#f43f5e',
+        accentGlow: 'rgba(244, 63, 94, 0.5)',
+        secondHand: '#fb7185',
+        hourHand: '#ffffff',
+        minuteHand: '#fecdd3',
+        subdialBg: 'rgba(30, 10, 15, 0.8)',
+        subdialBorder: 'rgba(244, 63, 94, 0.4)',
+        indices: '#fecdd3',
+        bezelText: '#f43f5e',
+        defconColor: '#f43f5e',
+        radarColor: 'rgba(244, 63, 94, 0.25)'
+    },
+    aviation: {
+        dialBg: '#0f172a',
+        dialGradOuter: '#090d16',
+        accent: '#f59e0b',
+        accentGlow: 'rgba(245, 158, 11, 0.4)',
+        secondHand: '#f59e0b',
+        hourHand: '#ffffff',
+        minuteHand: '#ffffff',
+        subdialBg: 'rgba(30, 41, 59, 0.7)',
+        subdialBorder: 'rgba(245, 158, 11, 0.35)',
+        indices: '#ffffff',
+        bezelText: '#fbbf24',
+        defconColor: '#f59e0b',
+        radarColor: 'rgba(245, 158, 11, 0.2)'
+    },
+    matrix: {
+        dialBg: '#040d06',
+        dialGradOuter: '#020603',
+        accent: '#22c55e',
+        accentGlow: 'rgba(34, 197, 94, 0.5)',
+        secondHand: '#4ade80',
+        hourHand: '#bbf7d0',
+        minuteHand: '#86efac',
+        subdialBg: 'rgba(6, 30, 12, 0.75)',
+        subdialBorder: 'rgba(34, 197, 94, 0.4)',
+        indices: '#86efac',
+        bezelText: '#4ade80',
+        defconColor: '#22c55e',
+        radarColor: 'rgba(34, 197, 94, 0.22)'
+    }
+};
+
+// Setup High-DPI Canvas
+const canvas = document.getElementById('watchCanvas');
+const ctx = canvas.getContext('2d');
+const dpr = window.devicePixelRatio || 1;
+const LOGICAL_SIZE = 460;
+canvas.width = LOGICAL_SIZE * dpr;
+canvas.height = LOGICAL_SIZE * dpr;
+canvas.style.width = LOGICAL_SIZE + 'px';
+canvas.style.height = LOGICAL_SIZE + 'px';
+ctx.scale(dpr, dpr);
+
+const CENTER = LOGICAL_SIZE / 2;
+const RADIUS = 210;
+
+// Canvas Click to cycle sub-dials
+canvas.addEventListener('click', (e) => {
+    subdialMode = (subdialMode + 1) % 3;
+    playSonarPing();
+});
+
+// Interactive Control Functions
+function setTheme(themeName, btn) {
+    currentTheme = themeName;
+    document.querySelectorAll('.controls-toolbar button').forEach(b => {
+        if (b.textContent.includes('Stealth') || b.textContent.includes('Red Alert') || b.textContent.includes('Aviator') || b.textContent.includes('Matrix')) {
+            b.classList.remove('active');
+        }
+    });
+    if (btn) btn.classList.add('active');
+    playTickSound();
+}
+
+function setCase(caseStyle, btn) {
+    currentCase = caseStyle;
+    const frame = document.getElementById('watchFrame');
+    frame.className = 'watch-frame ' + (caseStyle === 'round' ? '' : caseStyle);
+    document.querySelectorAll('.controls-toolbar button').forEach(b => {
+        if (b.textContent.includes('Round') || b.textContent.includes('Squircle') || b.textContent.includes('Hex')) {
+            b.classList.remove('active');
+        }
+    });
+    if (btn) btn.classList.add('active');
+    playTickSound();
+}
+
+function toggleRadar() {
+    radarActive = !radarActive;
+    const btn = document.getElementById('btnRadar');
+    btn.textContent = radarActive ? '📡 Radar: ON' : '📡 Radar: OFF';
+    btn.classList.toggle('active', radarActive);
+    playTickSound();
+}
+
+function toggleMovement() {
+    isSmoothSweep = !isSmoothSweep;
+    const btn = document.getElementById('btnMovement');
+    btn.textContent = isSmoothSweep ? '⚡ Sweep' : '⏱️ Quartz';
+    btn.classList.toggle('active', !isSmoothSweep);
+    playTickSound();
+}
+
+function toggleAudio() {
+    audioEnabled = !audioEnabled;
+    const btn = document.getElementById('btnAudio');
+    btn.textContent = audioEnabled ? '🔊 Sound: ON' : '🔇 Mute';
+    btn.classList.toggle('active', audioEnabled);
+    if (audioEnabled) playTickSound();
+}
+
+function toggleAOD() {
+    aodMode = !aodMode;
+    const btn = document.getElementById('btnAOD');
+    btn.classList.toggle('active', aodMode);
+    playTickSound();
+}
+
+function cycleDefcon() {
+    TELEMETRY.defconLevel = (TELEMETRY.defconLevel % 5) + 1;
+    const defconMap = {
+        1: { title: "DEFCON 1 // COCKED PISTOL", desc: "MAXIMUM ALERT: Active Incursion", color: "#f43f5e" },
+        2: { title: "DEFCON 2 // FAST PACE", desc: "SEVERE: Major Anomaly Spike", color: "#f97316" },
+        3: { title: "DEFCON 3 // ROUND HOUSE", desc: "ELEVATED: Multi-vector Probing", color: "#f59e0b" },
+        4: { title: "DEFCON 4 // DOUBLE TAKE", desc: "GUARDED: Minor Flow Deviations", color: "#38bdf8" },
+        5: { title: "DEFCON 5 // FADE OUT", desc: "NORMAL: Baseline Operational State", color: "#10b981" }
+    };
+    const cur = defconMap[TELEMETRY.defconLevel];
+    TELEMETRY.defconTitle = cur.title;
+    TELEMETRY.defconDesc = cur.desc;
+    TELEMETRY.defconColor = cur.color;
+    document.getElementById('teleDefcon').textContent = cur.title;
+    document.getElementById('teleDefcon').style.color = cur.color;
+    document.getElementById('teleDefconDesc').textContent = cur.desc;
+    playSonarPing();
+}
+
+// -------------------------------------------------------------
+// MAIN DRAWING LOOP (60 FPS Canvas Rendering)
+// -------------------------------------------------------------
+function drawWatchFace() {
+    ctx.clearRect(0, 0, LOGICAL_SIZE, LOGICAL_SIZE);
+
+    const theme = THEMES[currentTheme];
+    const now = new Date();
+    const ms = now.getMilliseconds();
+    const sec = now.getSeconds();
+    const min = now.getMinutes();
+    const hr = now.getHours();
+
+    // Trigger audio tick once per second
+    if (sec !== lastSecondPlayed) {
+        lastSecondPlayed = sec;
+        playTickSound();
+    }
+
+    // Update Digital Telemetry Readouts in DOM
+    const utcHours = String(now.getUTCHours()).padStart(2, '0');
+    const utcMins = String(now.getUTCMinutes()).padStart(2, '0');
+    const utcSecs = String(now.getUTCSeconds()).padStart(2, '0');
+    document.getElementById('teleUtcClock').textContent = `${utcHours}:${utcMins}:${utcSecs} UTC`;
+    document.getElementById('teleLocalClock').textContent = 'LOCAL: ' + now.toLocaleTimeString();
+
+    // Angles
+    const secAngle = isSmoothSweep 
+        ? ((sec + ms / 1000) * 6) * Math.PI / 180 
+        : (sec * 6) * Math.PI / 180;
+    const minAngle = ((min + sec / 60) * 6) * Math.PI / 180;
+    const hrAngle = (((hr % 12) + min / 60) * 30) * Math.PI / 180;
+
+    // 1. Dial Background
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(CENTER, CENTER, RADIUS, 0, Math.PI * 2);
+    const bgGrad = ctx.createRadialGradient(CENTER, CENTER, 20, CENTER, CENTER, RADIUS);
+    bgGrad.addColorStop(0, aodMode ? '#000000' : theme.dialBg);
+    bgGrad.addColorStop(1, aodMode ? '#000000' : theme.dialGradOuter);
+    ctx.fillStyle = bgGrad;
+    ctx.fill();
+
+    // Carbon-fiber / Radar grid pattern (only in normal mode)
+    if (!aodMode) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+        ctx.lineWidth = 1;
+        for (let r = 40; r < RADIUS; r += 32) {
+            ctx.beginPath();
+            ctx.arc(CENTER, CENTER, r, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        // Crosshair lines
+        ctx.beginPath();
+        ctx.moveTo(CENTER, CENTER - RADIUS + 15);
+        ctx.lineTo(CENTER, CENTER + RADIUS - 15);
+        ctx.moveTo(CENTER - RADIUS + 15, CENTER);
+        ctx.lineTo(CENTER + RADIUS - 15, CENTER);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    // 2. Rotating Radar Sweep (optional, disabled in AOD)
+    if (radarActive && !aodMode) {
+        radarAngle += 0.025;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(CENTER, CENTER);
+        ctx.arc(CENTER, CENTER, RADIUS - 18, radarAngle - 0.45, radarAngle);
+        ctx.closePath();
+        const radarGrad = ctx.createRadialGradient(CENTER, CENTER, 10, CENTER, CENTER, RADIUS);
+        radarGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        radarGrad.addColorStop(1, theme.radarColor);
+        ctx.fillStyle = radarGrad;
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 3. Outer Anomaly Ring (Threat Percentage Arc)
+    ctx.save();
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(CENTER, CENTER, RADIUS - 6, -Math.PI / 2, Math.PI * 1.5);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.stroke();
+
+    const threatFrac = Math.min(TELEMETRY.threatRate / 100, 1.0);
+    const endThreatAngle = -Math.PI / 2 + (threatFrac * Math.PI * 2);
+    ctx.beginPath();
+    ctx.arc(CENTER, CENTER, RADIUS - 6, -Math.PI / 2, endThreatAngle);
+    ctx.strokeStyle = TELEMETRY.defconColor;
+    ctx.shadowColor = TELEMETRY.defconColor;
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.restore();
+
+    // 4. Dial Graduations / Hour & Minute Hashes
+    ctx.save();
+    for (let i = 0; i < 60; i++) {
+        const angle = (i * 6) * Math.PI / 180;
+        const isHour = i % 5 === 0;
+        const isQuarter = i % 15 === 0;
+
+        const innerR = isQuarter ? RADIUS - 22 : (isHour ? RADIUS - 16 : RADIUS - 10);
+        const outerR = RADIUS - 8;
+
+        const x1 = CENTER + innerR * Math.sin(angle);
+        const y1 = CENTER - innerR * Math.cos(angle);
+        const x2 = CENTER + outerR * Math.sin(angle);
+        const y2 = CENTER - outerR * Math.cos(angle);
+
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = isQuarter ? theme.accent : (isHour ? theme.indices : 'rgba(148, 163, 184, 0.35)');
+        ctx.lineWidth = isQuarter ? 3.5 : (isHour ? 2 : 1);
+        ctx.stroke();
+    }
+    ctx.restore();
+
+    // 5. Hour Numerals (12, 3, 6, 9)
+    ctx.save();
+    ctx.font = '700 16px "JetBrains Mono", monospace';
+    ctx.fillStyle = theme.accent;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('12', CENTER, CENTER - RADIUS + 32);
+    ctx.fillText('3', CENTER + RADIUS - 32, CENTER);
+    ctx.fillText('6', CENTER, CENTER + RADIUS - 32);
+    ctx.fillText('9', CENTER - RADIUS + 32, CENTER);
+
+    if (!aodMode) {
+        ctx.font = '600 10px "JetBrains Mono", monospace';
+        ctx.fillStyle = theme.bezelText;
+        ctx.letterSpacing = '1px';
+        ctx.fillText('SENTINEL AI', CENTER, CENTER - 65);
+        ctx.font = '9px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#64748b';
+        ctx.fillText('DEFENSIVE SOC', CENTER, CENTER - 53);
+    }
+    ctx.restore();
+
+    // 6. Sub-dials
+    if (!aodMode) {
+        drawSubdials(theme, now);
+    }
+
+    // 7. Analog Clock Hands
+    drawHands(theme, hrAngle, minAngle, secAngle);
+
+    // 8. Central Cap & Pivot Jewel
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(CENTER, CENTER, 7, 0, Math.PI * 2);
+    ctx.fillStyle = '#1e293b';
+    ctx.fill();
+    ctx.strokeStyle = theme.accent;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(CENTER, CENTER, 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = theme.secondHand;
+    ctx.fill();
+    ctx.restore();
+
+    requestAnimationFrame(drawWatchFace);
+}
+
+// Sub-dial Complications
+function drawSubdials(theme, now) {
+    drawDefconSubdial(CENTER, CENTER - 72, 34, theme);
+    drawTrafficSubdial(CENTER - 82, CENTER, 32, theme);
+    drawAccuracySubdial(CENTER + 82, CENTER, 32, theme);
+    drawChronoSubdial(CENTER, CENTER + 75, 42, theme, now);
+}
+
+function drawDefconSubdial(x, y, r, theme) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = theme.subdialBg;
+    ctx.fill();
+    ctx.strokeStyle = theme.subdialBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const arcColors = ['#10b981', '#38bdf8', '#f59e0b', '#f97316', '#f43f5e'];
+    for (let i = 0; i < 5; i++) {
+        const start = Math.PI * 0.75 + (i * (Math.PI * 1.5 / 5));
+        const end = start + (Math.PI * 1.5 / 5) - 0.08;
+        ctx.beginPath();
+        ctx.arc(x, y, r - 5, start, end);
+        ctx.strokeStyle = (5 - i) >= TELEMETRY.defconLevel ? arcColors[i] : 'rgba(255,255,255,0.1)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    ctx.font = '800 11px "JetBrains Mono", monospace';
+    ctx.fillStyle = TELEMETRY.defconColor;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('LVL ' + TELEMETRY.defconLevel, x, y - 2);
+
+    ctx.font = '7px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('DEFCON', x, y + 10);
+    ctx.restore();
+}
+
+function drawTrafficSubdial(x, y, r, theme) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = theme.subdialBg;
+    ctx.fill();
+    ctx.strokeStyle = theme.subdialBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const flowRatio = Math.min(TELEMETRY.totalFlows / 5000, 1.0);
+    const needleAngle = Math.PI * 0.75 + (flowRatio * Math.PI * 1.5);
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + (r - 7) * Math.cos(needleAngle), y + (r - 7) * Math.sin(needleAngle));
+    ctx.strokeStyle = theme.accent;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.font = '700 8px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText((TELEMETRY.totalFlows / 1000).toFixed(1) + 'k', x, y + 6);
+
+    ctx.font = '6px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('FLOWS', x, y + 15);
+    ctx.restore();
+}
+
+function drawAccuracySubdial(x, y, r, theme) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = theme.subdialBg;
+    ctx.fill();
+    ctx.strokeStyle = theme.subdialBorder;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const f1Ratio = TELEMETRY.f1Score / 100;
+    ctx.beginPath();
+    ctx.arc(x, y, r - 5, -Math.PI / 2, -Math.PI / 2 + (f1Ratio * Math.PI * 2));
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.font = '700 8px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#10b981';
+    ctx.textAlign = 'center';
+    ctx.fillText(TELEMETRY.f1Score + '%', x, y - 1);
+
+    ctx.font = '6px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#94a3b8';
+    ctx.fillText('F1 SCORE', x, y + 10);
+    ctx.restore();
+}
+
+function drawChronoSubdial(x, y, r, theme, now) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(10, 15, 26, 0.85)';
+    ctx.roundRect(x - 48, y - 14, 96, 28, 6);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const utcHours = String(now.getUTCHours()).padStart(2, '0');
+    const utcMins = String(now.getUTCMinutes()).padStart(2, '0');
+    const utcSecs = String(now.getUTCSeconds()).padStart(2, '0');
+
+    ctx.font = '700 11px "Share Tech Mono", "JetBrains Mono", monospace';
+    ctx.fillStyle = theme.accent;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${utcHours}:${utcMins}:${utcSecs} UTC`, x, y);
+
+    const t = performance.now() * 0.005;
+    ctx.beginPath();
+    ctx.moveTo(x - 30, y + 18);
+    for (let px = -30; px <= 30; px += 4) {
+        let py = Math.sin(t + px * 0.2) * 2;
+        if (Math.abs(px) < 10) py += (Math.random() - 0.5) * 5;
+        ctx.lineTo(x + px, y + 18 + py);
+    }
+    ctx.strokeStyle = 'rgba(16, 185, 129, 0.6)';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+    ctx.restore();
+}
+
+function drawHands(theme, hrAngle, minAngle, secAngle) {
+    // Hour Hand
+    ctx.save();
+    ctx.rotate(hrAngle);
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 4;
+
+    ctx.beginPath();
+    ctx.moveTo(-5, 16);
+    ctx.lineTo(-4, -90);
+    ctx.lineTo(0, -104);
+    ctx.lineTo(4, -90);
+    ctx.lineTo(5, 16);
+    ctx.closePath();
+    ctx.fillStyle = theme.hourHand;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-2, 5);
+    ctx.lineTo(-2, -82);
+    ctx.lineTo(0, -88);
+    ctx.lineTo(2, -82);
+    ctx.lineTo(2, 5);
+    ctx.closePath();
+    ctx.fillStyle = theme.accent;
+    ctx.fill();
+    ctx.restore();
+
+    // Minute Hand
+    ctx.save();
+    ctx.rotate(minAngle);
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 8;
+    ctx.shadowOffsetY = 4;
+
+    ctx.beginPath();
+    ctx.moveTo(-4, 20);
+    ctx.lineTo(-3, -140);
+    ctx.lineTo(0, -156);
+    ctx.lineTo(3, -140);
+    ctx.lineTo(4, 20);
+    ctx.closePath();
+    ctx.fillStyle = theme.minuteHand;
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.moveTo(-1.5, 6);
+    ctx.lineTo(-1.5, -132);
+    ctx.lineTo(0, -140);
+    ctx.lineTo(1.5, -132);
+    ctx.lineTo(1.5, 6);
+    ctx.closePath();
+    ctx.fillStyle = theme.accent;
+    ctx.fill();
+    ctx.restore();
+
+    // Second Hand
+    if (!aodMode) {
+        ctx.save();
+        ctx.rotate(secAngle);
+        ctx.shadowColor = theme.secondHand;
+        ctx.shadowBlur = 8;
+
+        ctx.beginPath();
+        ctx.moveTo(0, 32);
+        ctx.lineTo(0, -172);
+        ctx.strokeStyle = theme.secondHand;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(0, 18, 4.5, 0, Math.PI * 2);
+        ctx.fillStyle = theme.secondHand;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(0, -140, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// Start animation
+requestAnimationFrame(drawWatchFace);
+</script>
+</body>
+</html>
